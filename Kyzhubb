@@ -1,53 +1,136 @@
--- Quick test script for Studio Command Bar: Clone button with anchored R6 clone
+--// Orion Universal Utility Script
+--// Made for learning & utility purposes
 
-local player = game.Players.LocalPlayer
-if not player then return end
+-- Load Orion Library
+local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
 
--- Create ScreenGui and Button
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "CloneButtonGui"
-screenGui.ResetOnSpawn = false
-screenGui.Parent = player:WaitForChild("PlayerGui")
+-- Services
+local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+local LocalPlayer = Players.LocalPlayer
 
-local button = Instance.new("TextButton")
-button.Size = UDim2.new(0, 200, 0, 50)
-button.Position = UDim2.new(0.5, -100, 1, -60)
-button.Text = "Clone My Character (Anchored R6)"
-button.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-button.TextColor3 = Color3.new(1, 1, 1)
-button.Font = Enum.Font.GothamBold
-button.TextSize = 18
-button.Parent = screenGui
+-- Variables
+local SavedCFrame = nil
 
--- Click function
-button.MouseButton1Click:Connect(function()
-    local character = player.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then
-        warn("No character found!")
-        return
-    end
+-- Create Window
+local Window = OrionLib:MakeWindow({
+	Name = "Universal Utility Hub",
+	HidePremium = false,
+	SaveConfig = true,
+	ConfigFolder = "UniversalOrionHub"
+})
 
-    -- Clone the character
-    local clone = character:Clone()
-    
-    -- Force R6 rig type
-    local humanoid = clone:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        humanoid.RigType = Enum.HumanoidRigType.R6
-        humanoid:ApplyDescription(game.Players:GetHumanoidDescriptionFromUserId(player.UserId)) -- Keeps appearance
-    end
-    
-    -- Anchor all BaseParts
-    for _, part in pairs(clone:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.Anchored = true
-        elseif part:IsA("Script") or part:IsA("LocalScript") then
-            part:Destroy() -- Remove scripts to prevent animation/movement
-        end
-    end
-    
-    clone.Parent = workspace
-    print("Cloned and anchored your character!")
-end)
+--==============================
+-- 📍 Waypoint Tab
+--==============================
+local WaypointTab = Window:MakeTab({
+	Name = "Waypoint",
+	Icon = "rbxassetid://4483345998",
+	PremiumOnly = false
+})
 
-print("Clone button created! Click it to make an anchored R6 clone.")
+WaypointTab:AddButton({
+	Name = "Set Waypoint (Current Position)",
+	Callback = function()
+		local char = LocalPlayer.Character
+		if char and char:FindFirstChild("HumanoidRootPart") then
+			SavedCFrame = char.HumanoidRootPart.CFrame
+			OrionLib:MakeNotification({
+				Name = "Waypoint Set",
+				Content = "Your position has been saved.",
+				Image = "rbxassetid://4483345998",
+				Time = 3
+			})
+		end
+	end
+})
+
+WaypointTab:AddButton({
+	Name = "Teleport to Waypoint",
+	Callback = function()
+		local char = LocalPlayer.Character
+		if SavedCFrame and char and char:FindFirstChild("HumanoidRootPart") then
+			char.HumanoidRootPart.CFrame = SavedCFrame
+		else
+			OrionLib:MakeNotification({
+				Name = "Error",
+				Content = "No waypoint set yet.",
+				Time = 3
+			})
+		end
+	end
+})
+
+--==============================
+-- 👤 Player Tab
+--==============================
+local PlayerTab = Window:MakeTab({
+	Name = "Player",
+	Icon = "rbxassetid://4483345998",
+	PremiumOnly = false
+})
+
+PlayerTab:AddButton({
+	Name = "Refresh Character",
+	Callback = function()
+		local pos
+		if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+			pos = LocalPlayer.Character.HumanoidRootPart.CFrame
+		end
+
+		LocalPlayer.CharacterAdded:Wait()
+		task.wait(0.2)
+
+		if pos and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+			LocalPlayer.Character.HumanoidRootPart.CFrame = pos
+		end
+	end
+})
+
+PlayerTab:AddButton({
+	Name = "Reset Character",
+	Callback = function()
+		if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+			LocalPlayer.Character.Humanoid.Health = 0
+		end
+	end
+})
+
+PlayerTab:AddParagraph("Player Info",
+	"Username: " .. LocalPlayer.Name ..
+	"\nUserId: " .. LocalPlayer.UserId
+)
+
+--==============================
+-- ⚙️ Settings Tab
+--==============================
+local SettingsTab = Window:MakeTab({
+	Name = "Settings",
+	Icon = "rbxassetid://4483345998",
+	PremiumOnly = false
+})
+
+SettingsTab:AddButton({
+	Name = "Rejoin Server",
+	Callback = function()
+		TeleportService:Teleport(game.PlaceId, LocalPlayer)
+	end
+})
+
+SettingsTab:AddToggle({
+	Name = "Toggle UI (RightShift)",
+	Default = true,
+	Callback = function(Value)
+		OrionLib:Toggle()
+	end
+})
+
+SettingsTab:AddButton({
+	Name = "Destroy UI",
+	Callback = function()
+		OrionLib:Destroy()
+	end
+})
+
+-- Init Orion
+OrionLib:Init()
